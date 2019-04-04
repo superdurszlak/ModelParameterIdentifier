@@ -175,5 +175,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # Files not covered by default Jetbrains .gitignore
-.idea/misc.xml
-.idea/vcs.xml
+.idea/*

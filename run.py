@@ -1,29 +1,32 @@
 import math
+from concurrent.futures import ProcessPoolExecutor, wait, ALL_COMPLETED
+from itertools import product
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.optimize as scopt
 
-from concurrent.futures import ProcessPoolExecutor, wait, ALL_COMPLETED
-from itertools import product
-
-from src.models.johnson_cook_model import JohnsonCookModel
-from src.models.modified_johnson_cook_model import ModifiedJohnsonCookModel
-from src.models.zerilli_armstrong_fcc_model import ZerilliArmstrongFCCModel
+from src import config, arguments
 from src.utils.goal_function import goal_function
 
 
 def main():
-    df = pd.read_csv('data_exp.csv', decimal=',')
 
-    models = [JohnsonCookModel, ModifiedJohnsonCookModel, ZerilliArmstrongFCCModel]
-    methods = ['Nelder-Mead', 'Powell', 'BFGS']
+    args = arguments.parser.parse_args()
+
+    models_args = args.models
+    methods = args.methods
+    file_path = args.input[0]
+    attempts = args.attempts[0]
+
+    df = pd.read_csv(file_path, decimal=',')
+
+    models = [v for k, v in config.ALLOWED_MODELS.items() if k in models_args]
     results_map = dict((model_class, []) for model_class in models)
     executor = ProcessPoolExecutor()
 
-    trial_limit = math.ceil(10 / (len(methods) * len(models)))
-
-    for cls, method, _ in product(models, methods, range(trial_limit)):
+    for cls, method, _ in product(models, methods, range(attempts)):
         params = np.random.rand(cls.params_scaling().shape[0])
         future_result = executor.submit(
             fn=scopt.minimize,
