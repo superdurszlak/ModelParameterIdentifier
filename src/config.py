@@ -15,3 +15,5 @@ ALLOWED_METHODS = [
     'Powell',
     'BFGS'
 ]
+
+MAX_RESULTS = 5
