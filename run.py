@@ -7,6 +7,7 @@ import pandas as pd
 import scipy.optimize as scopt
 
 from src import config, arguments
+from src.sensitivity.linear_sensitivity_analysis import LinearSensitivityAnalysis
 from src.utils.goal_function import goal_function
 
 
@@ -48,10 +49,20 @@ def main():
 
         def result_mapper(result):
             model = cls(result.x)
+            base_params = np.array(result.x)
+            shape = base_params.shape
+            deviations = np.ones(shape) * 0.1
+            analysis = LinearSensitivityAnalysis(result.x, cls, deviations)
+            analysis.run(goal_function, df.copy())
             return {
                 'params': model.json,
                 'vector': model.params.tolist(),
-                'fitness': result.fun
+                'fitness': result.fun,
+                'sensitivity': analysis.maximum_sensitivity.tolist(),
+                'relative_sensitivity': True,
+                'deviation_at_minimum_sensitivity': analysis.deviation_at_minimum_sensitivity.tolist(),
+                'relative_deviation': True,
+                'sensitivity_analysis_success': analysis.success
             }
 
         result_dict[cls.__name__] = list(map(result_mapper, results))
