@@ -105,7 +105,7 @@ class BaseSensitivityAnalysis(abc.ABC):
                     and abs(relative_deviation[index]) < abs(self._deviation_at_minimum_sensitivity[index]):
                 self._deviation_at_minimum_sensitivity[index] = relative_deviation[index]
 
-        self._success = self._maximum_sensitivity.min() >= self._minimum_sensitivity
+        self._success = bool(self._maximum_sensitivity.min() >= self._minimum_sensitivity)
         self._completed = True
 
     def _get_deviations(self):
