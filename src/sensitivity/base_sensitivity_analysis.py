@@ -15,7 +15,7 @@ class BaseSensitivityAnalysis(abc.ABC):
                  max_deviation: np.ndarray,
                  samples: int = 50,
                  relative_deviations: bool = True,
-                 minimum_sensitivity: float = 1e-2,
+                 minimum_sensitivity: float = 1e-3,
                  relative_sensitivity: bool = True):
         if parameters.shape != model.params_scaling().shape:
             raise ValueError("parameters' shape must match that of model's parameters")
@@ -62,13 +62,17 @@ class BaseSensitivityAnalysis(abc.ABC):
     def success(self):
         if not self._completed:
             raise RuntimeError(self._incomplete_analysis_error)
-        return self._completed
+        return self._success
 
     @property
     def maximum_sensitivity(self):
         if not self._completed:
             raise RuntimeError(self._incomplete_analysis_error)
         return np.abs(self._maximum_sensitivity)
+
+    @property
+    def threshold_sensitivity(self):
+        return self._minimum_sensitivity
 
     @property
     def deviation_at_minimum_sensitivity(self):
@@ -80,6 +84,9 @@ class BaseSensitivityAnalysis(abc.ABC):
         if self.completed:
             raise RuntimeError("Analysis is already completed")
         self._reference_error = goal_function(self._parameters, data, self._model)
+
+        if self._relative_sensitivity:
+            self._minimum_sensitivity = self._minimum_sensitivity * self._reference_error
 
         for deviation, index in self._get_deviations():
             relative_deviation = deviation
@@ -94,12 +101,9 @@ class BaseSensitivityAnalysis(abc.ABC):
             if sensitivity > self._maximum_sensitivity[index]:
                 self._maximum_sensitivity[index] = sensitivity
 
-            if self._relative_sensitivity:
-                sensitivity = sensitivity / self._reference_error
-
             if sensitivity >= self._minimum_sensitivity \
-                    and abs(deviation[index]) < abs(self._deviation_at_minimum_sensitivity[index]):
-                self._deviation_at_minimum_sensitivity[index] = deviation[index]
+                    and abs(relative_deviation[index]) < abs(self._deviation_at_minimum_sensitivity[index]):
+                self._deviation_at_minimum_sensitivity[index] = relative_deviation[index]
 
         self._success = self._maximum_sensitivity.min() >= self._minimum_sensitivity
         self._completed = True

@@ -59,9 +59,8 @@ def main():
                 'vector': model.params.tolist(),
                 'fitness': result.fun,
                 'sensitivity': analysis.maximum_sensitivity.tolist(),
-                'relative_sensitivity': True,
-                'deviation_at_minimum_sensitivity': analysis.deviation_at_minimum_sensitivity.tolist(),
-                'relative_deviation': True,
+                'threshold_sensitivity': analysis.threshold_sensitivity,
+                'deviation_at_threshold_sensitivity': analysis.deviation_at_minimum_sensitivity.tolist(),
                 'sensitivity_analysis_success': analysis.success
             }
 

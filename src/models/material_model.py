@@ -4,6 +4,8 @@ import numpy as np
 
 class MaterialModel(abc.ABC):
 
+    # TODO: Implement analytical and/or numerical derivatives for each model parameter
+
     def __init__(self, parameters: np.ndarray):
         if parameters.shape != self.params_scaling().shape:
             raise ValueError("Invalid number of parameters")
