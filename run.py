@@ -8,7 +8,7 @@ import scipy.optimize as scopt
 
 from src import config, arguments
 from src.sensitivity.linear_sensitivity_analysis import LinearSensitivityAnalysis
-from src.utils.goal_function import goal_function
+from src.utils.goal_function import goal_function, goal_function_derivatives
 
 
 def main():
@@ -61,7 +61,8 @@ def main():
                 'sensitivity': analysis.maximum_sensitivity.tolist(),
                 'threshold_sensitivity': analysis.threshold_sensitivity,
                 'deviation_at_threshold_sensitivity': analysis.deviation_at_minimum_sensitivity.tolist(),
-                'sensitivity_analysis_success': analysis.success
+                'sensitivity_analysis_success': analysis.success,
+                'goal_function_derivatives': goal_function_derivatives(result.x, df, cls)
             }
 
         result_dict[cls.__name__] = list(map(result_mapper, results))
