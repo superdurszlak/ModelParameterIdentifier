@@ -1,7 +1,9 @@
 import abc
 from typing import Type
 
+import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import FormatStrFormatter
 from pandas import DataFrame
 
 from src.models.material_model import MaterialModel
@@ -53,6 +55,7 @@ class BaseSensitivityAnalysis(abc.ABC):
 
         self._incomplete_analysis_error = "Analysis has not been carried out yet"
         self._reference_error = None
+        self._results = DataFrame(columns=["Parameter", "Deviation", "GF change"])
 
     @property
     def completed(self):
@@ -88,8 +91,11 @@ class BaseSensitivityAnalysis(abc.ABC):
         if self._relative_sensitivity:
             self._minimum_sensitivity = self._minimum_sensitivity * self._reference_error
 
+        labels = self._model.labels()
+
         for deviation, index in self._get_deviations():
             relative_deviation = deviation
+            idx = index[0]
 
             if self._relative_deviations:
                 relative_deviation = relative_deviation * self._parameters
@@ -98,6 +104,12 @@ class BaseSensitivityAnalysis(abc.ABC):
             error = goal_function(parameters, data, self._model)
             sensitivity = error - self._reference_error
 
+            self._results = self._results.append({
+                "Parameter": labels[idx],
+                "Deviation": relative_deviation[idx],
+                "GF change": sensitivity
+            }, ignore_index=True)
+
             if sensitivity > self._maximum_sensitivity[index]:
                 self._maximum_sensitivity[index] = sensitivity
 
@@ -105,8 +117,42 @@ class BaseSensitivityAnalysis(abc.ABC):
                     and abs(relative_deviation[index]) < abs(self._deviation_at_minimum_sensitivity[index]):
                 self._deviation_at_minimum_sensitivity[index] = relative_deviation[index]
 
+        self._results.sort_values(by="Deviation", inplace=True)
         self._success = bool(self._maximum_sensitivity.min() >= self._minimum_sensitivity)
         self._completed = True
+
+    def plot(self, filename: str):
+        if not self.completed:
+            raise RuntimeError(self._incomplete_analysis_error)
+
+        grouped = self._results.groupby("Parameter")
+        model = self._model(self._parameters)
+
+        class_name = self._model.__name__
+        params = model.json
+        params_str = ", ".join([f"{k} = {round(v, 4)}" for k, v in params.items()])
+
+        ncols = 3
+        nrows = int(np.ceil(grouped.ngroups / ncols))
+
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 4 * nrows), facecolor="1.0")
+        fig.suptitle(f"Solution for {class_name}\n({params_str})", fontsize=12)
+
+        flattened_axes = axes.flatten()
+        for ax in flattened_axes:
+            ax.set_visible(False)
+
+        for (key, ax) in zip(grouped.groups.keys(), flattened_axes):
+            ax.set_visible(True)
+            grouped.get_group(key).plot(x="Deviation", y="GF change", ax=ax)
+            ax.set_title(f"Computed minimum's neighbourhood\nalong '{key}' axis")
+            ax.set_xlabel(f"{key} deviation")
+            ax.set_ylabel("Goal function deviation")
+            ax.ticklabel_format(axis='both', style='sci', scilimits=(0, 0))
+            ax.get_legend().remove()
+
+            plt.subplots_adjust(wspace=0.35, hspace=0.45)
+        plt.savefig(filename, dpi=90)
 
     def _get_deviations(self):
         it = np.nditer(self._max_deviation, flags=['multi_index'])
