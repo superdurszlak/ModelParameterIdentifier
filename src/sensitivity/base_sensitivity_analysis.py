@@ -103,10 +103,11 @@ class BaseSensitivityAnalysis(abc.ABC):
             parameters = self._parameters + relative_deviation
             error = goal_function(parameters, data, self._model)
             sensitivity = error - self._reference_error
+            scaled_deviations = relative_deviation * self._model.params_scaling()
 
             self._results = self._results.append({
                 "Parameter": labels[idx],
-                "Deviation": relative_deviation[idx],
+                "Deviation": scaled_deviations[idx],
                 "GF change": sensitivity
             }, ignore_index=True)
 
