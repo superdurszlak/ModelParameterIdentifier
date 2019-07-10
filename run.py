@@ -4,6 +4,7 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
+import psopy
 import scipy.optimize as scopt
 
 from src import config, arguments
@@ -28,17 +29,30 @@ def main():
 
     result_dict = {}
 
-    for cls, method, _ in product(models, methods, range(attempts)):
-        params = np.random.rand(cls.params_scaling().shape[0])
-        future_result = executor.submit(
-            fn=scopt.minimize,
-            fun=goal_function,
-            x0=params,
-            args=(df.copy(), cls),
-            method=method,
-            tol=2.5e-3
-        )
-        results_map[cls].append(future_result)
+    for cls, method in product(models, methods):
+        if method == 'PSO':
+            for _ in range(3):
+                params = np.random.rand(attempts, cls.params_scaling().shape[0])
+                future_result = executor.submit(
+                    fn=psopy.minimize,
+                    fun=goal_function,
+                    x0=params,
+                    args=(df.copy(), cls),
+                    tol=2.5e-3
+                )
+                results_map[cls].append(future_result)
+        else:
+            for _ in range(attempts):
+                params = np.random.rand(cls.params_scaling().shape[0])
+                future_result = executor.submit(
+                    fn=scopt.minimize,
+                    fun=goal_function,
+                    x0=params,
+                    args=(df.copy(), cls),
+                    method=method,
+                    tol=2.5e-3
+                )
+                results_map[cls].append(future_result)
 
     for cls in models:
         print("Waiting for optimizations for model {} to complete".format(cls.__name__))

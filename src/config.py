@@ -15,7 +15,8 @@ ALLOWED_MODELS = {
 ALLOWED_METHODS = [
     'Nelder-Mead',
     'Powell',
-    'BFGS'
+    'BFGS',
+    'PSO'
 ]
 
 MAX_RESULTS = 5
