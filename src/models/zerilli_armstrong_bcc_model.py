@@ -13,7 +13,7 @@ class ZerilliArmstrongBCCModel(MaterialModel):
 
     @classmethod
     def params_scaling(cls):
-        return np.array([1e9, 1e-2, 1e-2, 1e9, 1.0, 1e9])
+        return np.array([1e9, 1e-2, 1e-2, 1e9, 1e-2, 1e9])
 
     def __call__(self, strain: float, strain_rate: float, temperature: float):
         parameters = self.params
