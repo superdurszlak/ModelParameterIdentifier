@@ -8,8 +8,8 @@ import psopy
 import scipy.optimize as scopt
 
 from src import config, arguments
-from src.sensitivity.linear_sensitivity_analysis import LinearSensitivityAnalysis
-from src.utils.goal_function import goal_function, goal_function_derivatives
+from src.plot import plot
+from src.utils.goal_function import goal_function
 
 
 def main():
@@ -24,23 +24,22 @@ def main():
     df = pd.read_csv(file_path, decimal=',')
 
     models = [v for k, v in config.ALLOWED_MODELS.items() if k in models_args]
-    results_map = dict((model_class, []) for model_class in models)
+    results_map = dict(((cls, method), []) for cls, method in product(models, methods))
     executor = ProcessPoolExecutor()
 
     result_dict = {}
 
     for cls, method in product(models, methods):
         if method == 'PSO':
-            for _ in range(3):
-                params = np.random.rand(attempts, cls.params_scaling().shape[0])
-                future_result = executor.submit(
-                    fn=psopy.minimize,
-                    fun=goal_function,
-                    x0=params,
-                    args=(df.copy(), cls),
-                    tol=2.5e-3
-                )
-                results_map[cls].append(future_result)
+            params = np.random.rand(attempts, cls.params_scaling().shape[0])
+            future_result = executor.submit(
+                fn=psopy.minimize,
+                fun=goal_function,
+                x0=params,
+                args=(df.copy(), cls),
+                tol=2.5e-3
+            )
+            results_map[(cls, method)].append(future_result)
         else:
             for _ in range(attempts):
                 params = np.random.rand(cls.params_scaling().shape[0])
@@ -52,38 +51,31 @@ def main():
                     method=method,
                     tol=2.5e-3
                 )
-                results_map[cls].append(future_result)
+                results_map[(cls, method)].append(future_result)
 
     for cls in models:
-        print("Waiting for optimizations for model {} to complete".format(cls.__name__))
-        results = results_map[cls]
-        wait(results, return_when=ALL_COMPLETED)
-        results = [future_result.result() for future_result in results]
-        results = sorted(results, key=lambda r: r.fun, reverse=False)[:min(config.MAX_RESULTS, len(results))]
+        method_dict = {}
+        for method in methods:
+            print('Waiting for {} optimizations of model {} to complete'.format(method, cls.__name__))
+            results = results_map[(cls, method)]
+            wait(results, return_when=ALL_COMPLETED)
+            results = [future_result.result() for future_result in results]
+            results = sorted(results, key=lambda r: r.fun, reverse=False)[:min(config.MAX_RESULTS, len(results))]
 
-        def result_mapper(result, index):
-            model = cls(result.x)
-            base_params = np.array(result.x)
-            shape = base_params.shape
-            deviations = np.ones(shape) * 0.1
-            analysis = LinearSensitivityAnalysis(result.x, cls, deviations)
-            analysis.run(goal_function, df.copy())
-            filename = output.split(".")[0]
-            filename = f"{filename}_{cls.__name__}_plot_{index}.png"
-            analysis.plot(filename)
-            return {
-                'params': model.json,
-                'vector': model.params.tolist(),
-                'fitness': result.fun,
-                'plot_file': filename,
-                'sensitivity': analysis.maximum_sensitivity.tolist(),
-                'threshold_sensitivity': analysis.threshold_sensitivity,
-                'deviation_at_threshold_sensitivity': analysis.deviation_at_minimum_sensitivity.tolist(),
-                'sensitivity_analysis_success': analysis.success,
-                'goal_function_derivatives': goal_function_derivatives(result.x, df, cls)
-            }
+            def result_mapper(result):
+                model = cls(result.x)
+                fitness = result.fun
+                return {
+                    'params': model.json,
+                    'fitness': fitness,
+                    'deviation_percentage': 100.0 * (fitness ** 0.5),
+                    'method': method
+                }
 
-        result_dict[cls.__name__] = [result_mapper(r, i) for i, r in enumerate(results)]
+            best_result = results[0].x
+            plot(df, cls(best_result), '{}_{}.png'.format(method, cls.__name__))
+            method_dict[method] = [result_mapper(r) for r in results]
+        result_dict[cls.__name__] = method_dict
 
     with open(output, 'w') as output:
         json.dump(result_dict, output)

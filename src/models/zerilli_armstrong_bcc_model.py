@@ -8,6 +8,10 @@ from src.models.material_model import MaterialModel
 class ZerilliArmstrongBCCModel(MaterialModel):
 
     @classmethod
+    def _lower_bounds(cls):
+        return np.array([0.0, -np.inf, -np.inf, 0.0, 0.0, 0.0])
+
+    @classmethod
     def labels(cls):
         return ['C1', 'C3', 'C4', 'C5', 'n', 'C6']
 

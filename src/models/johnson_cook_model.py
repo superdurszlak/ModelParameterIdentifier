@@ -8,6 +8,14 @@ from src.models.material_model import MaterialModel
 class JohnsonCookModel(MaterialModel):
 
     @classmethod
+    def _upper_bounds(cls):
+        return np.array([np.inf, np.inf, np.inf, np.inf, 1.0])
+
+    @classmethod
+    def _lower_bounds(cls):
+        return np.array([0.0, 0.0, 0.0, -np.inf, 0.0])
+
+    @classmethod
     def labels(cls):
         return ['A', 'B', 'n', 'C', 'm']
 

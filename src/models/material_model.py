@@ -22,6 +22,22 @@ class MaterialModel(abc.ABC):
         pass
 
     @classmethod
+    def _upper_bounds(cls):
+        return np.ones_like(cls.params_scaling()) * np.inf
+
+    @classmethod
+    def _lower_bounds(cls):
+        return np.ones_like(cls.params_scaling()) * (-np.inf)
+
+    def is_within_bounds(self):
+        params: np.ndarray = self.params
+        upper: np.ndarray = self._upper_bounds()
+        lower: np.ndarray = self._lower_bounds()
+        within_upper = (upper >= params).all()
+        within_lower = (lower <= params).all()
+        return within_lower and within_upper
+
+    @classmethod
     @abc.abstractmethod
     def labels(cls):
         pass
